@@ -4,7 +4,7 @@
 
 static equeue_t test_equeue;
 static void test_call(void *obj, void *data) {
-  printf("%s %s\r\n", (char *)obj, (char *)data);
+  PRINT("%s %s\r\n", (char *)obj, (char *)data);
 }
 
 int main() {

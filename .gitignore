@@ -1,2 +1,6 @@
 
 .vscode
+*.d
+*.o
+*.a
+test
