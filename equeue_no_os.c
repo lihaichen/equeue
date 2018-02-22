@@ -6,9 +6,9 @@ equeue_tick_t equeue_tick() { return 0; }
 int equeue_mutex_create(equeue_mutex_t *m) { return 0; }
 void equeue_mutex_destroy(equeue_mutex_t *m) {}
 
-void equeue_mutex_lock(equeue_mutex_t *m) { __disable_irq(); }
+void equeue_mutex_lock(equeue_mutex_t *m) {}
 
-void equeue_mutex_unlock(equeue_mutex_t *m) { __enable_irq(); }
+void equeue_mutex_unlock(equeue_mutex_t *m) {}
 
 int equeue_sema_create(equeue_sem_t *sem) { return 0; }
 void equeue_sema_destroy(equeue_sem_t *sem) {}
