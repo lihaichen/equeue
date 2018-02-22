@@ -301,7 +301,7 @@ void equeue_list(equeue_t *equeue) {
   for (; node != equeue->event_list.prev; node = node->next) {
     event =
         (equeue_event_t *)equeue_list_entry(node->next, equeue_object_t, list);
-    PRINT("0x%p %s  ", &event->parent, event->name);
+    PRINT("%p %s  ", &event->parent, event->name);
   }
   PRINT("\r\n");
   equeue_mutex_unlock(&equeue->equeue_lock);
@@ -311,7 +311,7 @@ void equeue_list(equeue_t *equeue) {
   for (; node != equeue->timer_list.prev; node = node->next) {
     timer =
         (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
-    PRINT("0x%p %d-%d  ", &timer->parent, timer->timeout_tick,
+    PRINT("%p %d--%d  ", &timer->parent, timer->timeout_tick,
           timer->period_tick);
   }
   PRINT("\r\n");

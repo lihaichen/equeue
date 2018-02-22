@@ -19,11 +19,13 @@ static void test_event(void *obj, void *data) {
 static void test_dispatch_event(void *obj, void *data) {
   equeue_dispatch_event(&test_equeue, "test_event", "equeue_add_listener");
 }
+static void test_list(void *obj, void *data) { equeue_list(&test_equeue); }
 
 int main() {
-  equeue_create(&test_equeue, 5);
+  equeue_create(&test_equeue, 6);
   equeue_call(&test_equeue, test_call, "hello", "equeue_call!");
   equeue_call_in(&test_equeue, 10000, test_call_in, "hello", "equeue_call_in!");
+  equeue_call_every(&test_equeue, 5000, test_list, NULL, NULL);
   equeue_call_every(&test_equeue, 3000, test_call_every, "hello",
                     " equeue_call_every!");
   equeue_add_listener(&test_equeue, "test_event", test_event, "hello");
