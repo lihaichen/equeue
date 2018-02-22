@@ -11,7 +11,7 @@ static void test_call_in(void *obj, void *data) {
   PRINT("call in ==>%s %s\r\n", (char *)obj, (char *)data);
 }
 static void test_call_every(void *obj, void *data) {
-  PRINT("call every ==>%s %s\r\n", (char *)obj, (char *)data);
+  PRINT("call every ==>%s %s \r\n", (char *)obj, (char *)data);
 }
 static void test_event(void *obj, void *data) {
   PRINT("test_event ==>%s %s\r\n", (char *)obj, (char *)data);
@@ -25,7 +25,7 @@ int main() {
   equeue_create(&test_equeue, 6);
   equeue_call(&test_equeue, test_call, "hello", "equeue_call!");
   equeue_call_in(&test_equeue, 10000, test_call_in, "hello", "equeue_call_in!");
-  equeue_call_every(&test_equeue, 5000, test_list, NULL, NULL);
+  // equeue_call_every(&test_equeue, 5000, test_list, NULL, NULL);
   equeue_call_every(&test_equeue, 3000, test_call_every, "hello",
                     " equeue_call_every!");
   equeue_add_listener(&test_equeue, "test_event", test_event, "hello");

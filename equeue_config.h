@@ -8,15 +8,13 @@ this is a config file
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // supported platforms
-#define EQUEUE_PLATFORM_NO_OS
-// #define EQUEUE_PLATFORM_POSIX
+// #define EQUEUE_PLATFORM_NO_OS
+#define EQUEUE_PLATFORM_POSIX
 // #define equeue_PLATFORM_RTTHREAD
 
 #define MAX_EVENT_NAME 16
@@ -29,6 +27,11 @@ extern "C" {
 // Platform includes
 #if defined(EQUEUE_PLATFORM_POSIX)
 #include <pthread.h>
+#include <semaphore.h>
+#include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
+
 #define equeue_malloc malloc
 #define equeue_free free
 #define PRINT printf
@@ -65,11 +68,15 @@ void equeue_mutex_unlock(equeue_mutex_t *mutex);
 typedef volatile int equeue_sem_t;
 #endif
 
+#if defined(EQUEUE_PLATFORM_POSIX)
+typedef sem_t equeue_sem_t;
+#endif
+
 // Platform semaphore operations
 int equeue_sema_create(equeue_sem_t *sem);
 void equeue_sema_destroy(equeue_sem_t *sem);
 void equeue_sema_signal(equeue_sem_t *sem);
-bool equeue_sema_wait(equeue_sem_t *sem, int ms);
+int equeue_sema_wait(equeue_sem_t *sem, int ms);
 
 #ifdef __cplusplus
 }

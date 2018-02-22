@@ -3,6 +3,7 @@ CC = gcc
 AR = ar
 
 SRC += equeue_no_os.c \
+equeue_posix.c \
 equeue.c 
 
 OBJ := $(SRC:.c=.o)
@@ -16,7 +17,7 @@ CFLAGS += -O2
 endif
 
 CFLAGS += -I.
-CFLAGS += -std=c99
+
 CFLAGS += -Wall
 
 LFLAGS += -pthread
@@ -27,7 +28,7 @@ all: $(TARGET)
 	$(AR) rcs $@ $^
 
 %.o: %.c
-	$(CC) -c -MMD $(CFLAGS) $< -o $@
+	$(CC) -c -MMD  $(CFLAGS) $< -o $@
 
 %.s: %.c
 	$(CC) -S $(CFLAGS) $< -o $@
@@ -38,4 +39,4 @@ clean:
 	rm -f $(DEP)
 	rm -f $(ASM)
 test:
-	$(CC) -o test test.c $(TARGET)
+	$(CC) -o test test.c $(TARGET) $(LFLAGS)

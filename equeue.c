@@ -81,7 +81,22 @@ void equeue_run(equeue_t *equeue, equeue_tick_t ms) {
     if (equeue->stop) {
       return;
     }
-    equeue_sema_wait(&equeue->equeue_sem, 2);
+#if defined(EQUEUE_PLATFORM_NO_OS)
+    equeue_sema_wait(&equeue->equeue_sem, 1);
+#else
+    {
+      equeue_list_t *node = &equeue->timer_list;
+      int wait_time = 1000 * 10;
+      if (node != node->prev) {
+        equeue_timer_t *timer = (equeue_timer_t *)equeue_list_entry(
+            node->next, equeue_object_t, list);
+        wait_time = timer->timeout_tick - tick - 1;
+        if (wait_time < 1)
+          wait_time = 1;
+      }
+      equeue_sema_wait(&equeue->equeue_sem, wait_time);
+    }
+#endif
   }
 }
 
@@ -287,6 +302,7 @@ int equeue_dispatch_event(equeue_t *equeue, const char *name, void *data) {
       break;
     }
   }
+  // equeue_sema_signal(&equeue->equeue_sem);
   equeue_mutex_unlock(&equeue->equeue_lock);
   return 0;
 }
