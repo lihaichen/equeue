@@ -13,8 +13,8 @@ extern "C" {
 #include <string.h>
 
 // supported platforms
-// #define EQUEUE_PLATFORM_NO_OS
-#define EQUEUE_PLATFORM_POSIX
+#define EQUEUE_PLATFORM_NO_OS
+// #define EQUEUE_PLATFORM_POSIX
 // #define equeue_PLATFORM_RTTHREAD
 
 #define MAX_EVENT_NAME 16
