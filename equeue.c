@@ -42,19 +42,36 @@ static void equeue_insert_timer_bytime(equeue_t *equeue,
   equeue_list_insert_after(node, &timer->parent.list);
   equeue_mutex_unlock(&equeue->equeue_lock);
 }
+/*
+  this function call malloc,do not call this func in interrupt context.
+*/
+int equeue_create(equeue_t *equeue, int event_size) {
+  int err = -1;
+  char *p = equeue_malloc(event_size * EQUEUE_MATE_SIZE);
+  if (p == NULL || equeue == NULL || event_size < 1) {
+    return err;
+  }
+  err = equeue_init(equeue, p, event_size);
+  equeue->is_malloc = 1;
+  return err;
+}
 
-int equeue_init(equeue_t *equeue) {
-  int err;
-  if (equeue == NULL)
-    return -1;
+int equeue_init(equeue_t *equeue, char *buf, int event_size) {
+  int err = -1;
+  if (equeue == NULL || buf == NULL || event_size < 1)
+    return err;
   err = equeue_mutex_create(&equeue->equeue_lock);
   if (err < 0)
     return err;
+  memset(equeue, 0, sizeof(equeue_t));
+  memset(buf, 0, event_size * EQUEUE_MATE_SIZE);
   err = equeue_sema_create(&equeue->equeue_sem);
   equeue_list_init(&equeue->do_list);
   equeue_list_init(&equeue->event_list);
   equeue_list_init(&equeue->timer_list);
   equeue->do_event_count = 0;
+  equeue->total_count = event_size;
+  equeue->buffer = buf;
   return 0;
 }
 
@@ -64,7 +81,6 @@ void equeue_run(equeue_t *equeue, equeue_tick_t ms) {
   if (equeue == NULL)
     return;
   while (1) {
-    // tick = equeue_tick();
     equeue_timer_check(equeue);
     while (!equeue_list_isempty(&equeue->do_list)) {
       equeue_object_t *object =
@@ -73,7 +89,6 @@ void equeue_run(equeue_t *equeue, equeue_tick_t ms) {
       if (object->cb) {
         object->cb(object->obj, object->data);
       }
-      // tick = equeue_tick();
       equeue_mutex_lock(&equeue->equeue_lock);
       equeue_list_remove(equeue->do_list.next);
       equeue_mutex_unlock(&equeue->equeue_lock);
@@ -82,7 +97,9 @@ void equeue_run(equeue_t *equeue, equeue_tick_t ms) {
       case EQUEUE_TIMER: {
         equeue_timer_t *timer = (equeue_timer_t *)object;
         if (timer->period_tick == 0) {
-          equeue_free(timer);
+          timer->parent.is_use = 0;
+          if (equeue->use_count > 1)
+            equeue->use_count--;
         } else {
           // add timer_list
           timer->timeout_tick = tick + timer->period_tick;
@@ -98,18 +115,37 @@ void equeue_run(equeue_t *equeue, equeue_tick_t ms) {
     if (equeue->stop) {
       return;
     }
-    equeue_sema_wait(&equeue->equeue_sem, 10);
+    equeue_sema_wait(&equeue->equeue_sem, 2);
   }
 }
 
 int equeue_call(equeue_t *equeue, callback cb, void *obj, void *data) {
   equeue_timer_t *timer = NULL;
+  int i = 0;
   if (equeue == NULL)
     return -1;
+  if (equeue->use_count >= equeue->total_count) {
+    return -1;
+  }
+  for (i = 0; i < equeue->total_count; i++) {
+    equeue_object_t *obj =
+        (equeue_object_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
+    if (!obj->is_use)
+      break;
+  }
+  if (i >= equeue->total_count) {
+    PRINT("equeue_call error\r\n");
+    return -1;
+  }
+#if 1
+  timer = (equeue_timer_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
+  timer->parent.is_use = 1;
+#else
   timer = (equeue_timer_t *)equeue_malloc(sizeof(equeue_timer_t));
   if (timer == NULL) {
     return -1;
   }
+#endif
   timer->parent.data = data;
   timer->parent.obj = obj;
   timer->parent.cb = cb;
@@ -126,13 +162,25 @@ int equeue_call(equeue_t *equeue, callback cb, void *obj, void *data) {
 equeue_timer_t *equeue_call_in(equeue_t *equeue, equeue_tick_t ms, callback cb,
                                void *obj, void *data) {
   equeue_timer_t *timer = NULL;
-
+  int i = 0;
   if (equeue == NULL)
     return timer;
-  timer = (equeue_timer_t *)equeue_malloc(sizeof(equeue_timer_t));
-  if (timer == NULL) {
+
+  if (equeue->use_count >= equeue->total_count) {
     return timer;
   }
+  for (i = 0; i < equeue->total_count; i++) {
+    equeue_object_t *obj =
+        (equeue_object_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
+    if (!obj->is_use)
+      break;
+  }
+  if (i >= equeue->total_count) {
+    PRINT("equeue_call error\r\n");
+    return timer;
+  }
+  timer = (equeue_timer_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
+  timer->parent.is_use = 1;
   timer->parent.data = data;
   timer->parent.obj = obj;
   timer->parent.cb = cb;
@@ -146,13 +194,25 @@ equeue_timer_t *equeue_call_in(equeue_t *equeue, equeue_tick_t ms, callback cb,
 equeue_timer_t *equeue_call_every(equeue_t *equeue, equeue_tick_t ms,
                                   callback cb, void *obj, void *data) {
   equeue_timer_t *timer = NULL;
-
+  int i = 0;
   if (equeue == NULL)
     return timer;
-  timer = (equeue_timer_t *)equeue_malloc(sizeof(equeue_timer_t));
-  if (timer == NULL) {
+
+  if (equeue->use_count >= equeue->total_count) {
     return timer;
   }
+  for (i = 0; i < equeue->total_count; i++) {
+    equeue_object_t *obj =
+        (equeue_object_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
+    if (!obj->is_use)
+      break;
+  }
+  if (i >= equeue->total_count) {
+    PRINT("equeue_call_every error\r\n");
+    return timer;
+  }
+  timer = (equeue_timer_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
+  timer->parent.is_use = 1;
   timer->parent.data = data;
   timer->parent.obj = obj;
   timer->parent.cb = cb;
@@ -176,8 +236,10 @@ int equeue_call_cancel(equeue_t *equeue, equeue_timer_t *timer) {
     timer_compare =
         (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
     if (timer_compare == timer) {
+      timer->parent.is_use = 0;
+      if (equeue->use_count > 1)
+        equeue->use_count--;
       equeue_list_remove(&timer->parent.list);
-      equeue_free(timer);
       status = 0;
       break;
     }

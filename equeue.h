@@ -18,6 +18,7 @@ typedef enum equeue_type { EQUEUE_TIMER = 0x11, EQUEUE_EVENT } equeue_type_t;
 typedef struct equeue_object {
   equeue_list_t list;
   equeue_type_t type;
+  char is_use;
   callback cb;
   void *obj;
   void *data;
@@ -35,6 +36,10 @@ typedef struct equeue_timer {
   unsigned int timeout_tick;
 } equeue_timer_t;
 
+#define EQUEUE_MATE_SIZE                                                       \
+  (sizeof(equeue_timer_t) > sizeof(equeue_event_t) ? sizeof(equeue_timer_t)    \
+                                                   : sizeof(equeue_event_t))
+
 struct equeue {
   equeue_mutex_t equeue_lock;
   equeue_sem_t equeue_sem;
@@ -43,10 +48,18 @@ struct equeue {
   equeue_list_t do_list;
   unsigned int do_event_count;
   int stop;
+  int is_malloc;
+  char *buffer;
+  int use_count;
+  int total_count;
 };
 typedef struct equeue equeue_t;
+/*
+  this function call malloc,do not call this func in interrupt context.
+*/
+int equeue_create(equeue_t *equeue, int event_size);
 //  init equeue container
-int equeue_init(equeue_t *equeue);
+int equeue_init(equeue_t *equeue, char *buf, int event_size);
 // run equeue container
 void equeue_run(equeue_t *equeue, equeue_tick_t ms);
 // add equeue listener

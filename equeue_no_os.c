@@ -1,7 +1,12 @@
 #include "equeue_config.h"
 #if defined(EQUEUE_PLATFORM_NO_OS)
+#include <sys/time.h>
 
-equeue_tick_t equeue_tick() { return 0; }
+equeue_tick_t equeue_tick() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 
 int equeue_mutex_create(equeue_mutex_t *m) { return 0; }
 void equeue_mutex_destroy(equeue_mutex_t *m) {}
