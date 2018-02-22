@@ -1,47 +1,13 @@
 #include "equeue.h"
+/*
+Check whether the timer expires.
+*/
+static int equeue_timer_check(equeue_t *equeue);
+/*
+Insert timer list according to time.
+*/
+static void equeue_insert_timer_bytime(equeue_t *equeue, equeue_timer_t *timer);
 
-static int equeue_timer_check(equeue_t *equeue) {
-  equeue_tick_t current_tick;
-  equeue_list_t *node = NULL;
-  equeue_timer_t *timer = NULL;
-  if (equeue == NULL)
-    return -1;
-  current_tick = equeue_tick();
-  node = &equeue->timer_list;
-  equeue_mutex_lock(&equeue->equeue_lock);
-  for (; node != equeue->timer_list.prev; node = node->next) {
-    timer =
-        (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
-    if ((current_tick - timer->timeout_tick) < MAX_TICK / 2) {
-      equeue_list_remove(&timer->parent.list);
-      equeue_list_insert_before(&equeue->do_list, &timer->parent.list);
-    } else
-      break;
-  }
-  equeue_mutex_unlock(&equeue->equeue_lock);
-  return 0;
-}
-
-// insert by time
-static void equeue_insert_timer_bytime(equeue_t *equeue,
-                                       equeue_timer_t *timer) {
-  equeue_timer_t *timer_compare = NULL;
-  equeue_list_t *node = NULL;
-  node = &equeue->timer_list;
-  equeue_mutex_lock(&equeue->equeue_lock);
-  for (; node != equeue->timer_list.prev; node = node->next) {
-    timer_compare =
-        (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
-    if ((timer_compare->timeout_tick - timer->timeout_tick) == 0) {
-      continue;
-    } else if ((timer_compare->timeout_tick - timer->timeout_tick) <
-               MAX_TICK / 2) {
-      break;
-    }
-  }
-  equeue_list_insert_after(node, &timer->parent.list);
-  equeue_mutex_unlock(&equeue->equeue_lock);
-}
 /*
   this function call malloc,do not call this func in interrupt context.
 */
@@ -137,15 +103,8 @@ int equeue_call(equeue_t *equeue, callback cb, void *obj, void *data) {
     PRINT("equeue_call error\r\n");
     return -1;
   }
-#if 1
   timer = (equeue_timer_t *)(equeue->buffer + EQUEUE_MATE_SIZE * i);
   timer->parent.is_use = 1;
-#else
-  timer = (equeue_timer_t *)equeue_malloc(sizeof(equeue_timer_t));
-  if (timer == NULL) {
-    return -1;
-  }
-#endif
   timer->parent.data = data;
   timer->parent.obj = obj;
   timer->parent.cb = cb;
@@ -306,8 +265,10 @@ int equeue_remove_listener(equeue_t *equeue, const char *name) {
       break;
     }
   }
+  event->parent.is_use = 0;
+  if (equeue->use_count > 1)
+    equeue->use_count--;
   equeue_mutex_unlock(&equeue->equeue_lock);
-  equeue_free(event);
   return 0;
 }
 
@@ -354,5 +315,53 @@ void equeue_list(equeue_t *equeue) {
           timer->period_tick);
   }
   PRINT("\r\n");
+  equeue_mutex_unlock(&equeue->equeue_lock);
+}
+
+/*
+Check whether the timer expires.
+*/
+static int equeue_timer_check(equeue_t *equeue) {
+  equeue_tick_t current_tick;
+  equeue_list_t *node = NULL;
+  equeue_timer_t *timer = NULL;
+  if (equeue == NULL)
+    return -1;
+  current_tick = equeue_tick();
+  node = &equeue->timer_list;
+  equeue_mutex_lock(&equeue->equeue_lock);
+  for (; node != equeue->timer_list.prev; node = node->next) {
+    timer =
+        (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
+    if ((current_tick - timer->timeout_tick) < MAX_TICK / 2) {
+      equeue_list_remove(&timer->parent.list);
+      equeue_list_insert_before(&equeue->do_list, &timer->parent.list);
+    } else
+      break;
+  }
+  equeue_mutex_unlock(&equeue->equeue_lock);
+  return 0;
+}
+
+/*
+Insert timer list according to time.
+*/
+static void equeue_insert_timer_bytime(equeue_t *equeue,
+                                       equeue_timer_t *timer) {
+  equeue_timer_t *timer_compare = NULL;
+  equeue_list_t *node = NULL;
+  node = &equeue->timer_list;
+  equeue_mutex_lock(&equeue->equeue_lock);
+  for (; node != equeue->timer_list.prev; node = node->next) {
+    timer_compare =
+        (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
+    if ((timer_compare->timeout_tick - timer->timeout_tick) == 0) {
+      continue;
+    } else if ((timer_compare->timeout_tick - timer->timeout_tick) <
+               MAX_TICK / 2) {
+      break;
+    }
+  }
+  equeue_list_insert_after(node, &timer->parent.list);
   equeue_mutex_unlock(&equeue->equeue_lock);
 }
