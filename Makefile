@@ -37,3 +37,5 @@ clean:
 	rm -f $(OBJ)
 	rm -f $(DEP)
 	rm -f $(ASM)
+test:
+	$(CC) -o test test.c $(TARGET)
