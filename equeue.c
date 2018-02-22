@@ -98,7 +98,7 @@ void equeue_run(equeue_t *equeue, equeue_tick_t ms) {
     if (equeue->stop) {
       return;
     }
-    HAL_Delay(2);
+    equeue_sema_wait(&equeue->equeue_sem, 10);
   }
 }
 
@@ -273,24 +273,24 @@ void equeue_list(equeue_t *equeue) {
   equeue_timer_t *timer = NULL;
   equeue_list_t *node = NULL;
   node = &equeue->event_list;
-  printf("event: \r\n");
+  PRINT("event: \r\n");
   equeue_mutex_lock(&equeue->equeue_lock);
   for (; node != equeue->event_list.prev; node = node->next) {
     event =
         (equeue_event_t *)equeue_list_entry(node->next, equeue_object_t, list);
-    printf("0x%X %s  ", &event->parent, event->name);
+    PRINT("0x%p %s  ", &event->parent, event->name);
   }
-  printf("\r\n");
+  PRINT("\r\n");
   equeue_mutex_unlock(&equeue->equeue_lock);
-  printf("timer: \r\n");
+  PRINT("timer: \r\n");
   equeue_mutex_lock(&equeue->equeue_lock);
   node = &equeue->timer_list;
   for (; node != equeue->timer_list.prev; node = node->next) {
     timer =
         (equeue_timer_t *)equeue_list_entry(node->next, equeue_object_t, list);
-    printf("0x%X %d-%d  ", &timer->parent, timer->timeout_tick,
-           timer->period_tick);
+    PRINT("0x%p %d-%d  ", &timer->parent, timer->timeout_tick,
+          timer->period_tick);
   }
-  printf("\r\n");
+  PRINT("\r\n");
   equeue_mutex_unlock(&equeue->equeue_lock);
 }

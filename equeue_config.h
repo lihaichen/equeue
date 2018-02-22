@@ -31,11 +31,13 @@ extern "C" {
 #include <pthread.h>
 #define equeue_malloc malloc
 #define equeue_free free
+#define PRINT printf
 #elif defined(equeue_PLATFORM_RTTHREAD)
 
 #elif defined(EQUEUE_PLATFORM_NO_OS)
 #define equeue_malloc malloc
 #define equeue_free free
+#define PRINT printf
 #endif
 
 typedef unsigned int equeue_tick_t;
