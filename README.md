@@ -30,7 +30,7 @@
   监听name消息，接收消息后执行cb回调函数。
 - int equeue_remove_listener(equeue_t *equeue, const char *name)  
 移除对name消息的监听。   
-- int equeue_dispatch_event(equeue_t *equeue, const char *name, void *data)
+- int equeue_dispatch_event(equeue_t *equeue, const char *name, void *data)  
 发送name 消息。用于解耦发起者和执行者。
 
 ### 测试  
